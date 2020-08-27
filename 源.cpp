@@ -86,6 +86,7 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 	int i;
 	vector<minion*> mytaunt;
 	vector<minion*> youtaunt;
+	int index;
 	
 	while (here.size() && there.size()) {
 
@@ -97,9 +98,17 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 		}
 
 		if (youtaunt.size() == 0)//敌方没有嘲讽
-			here[pm % (here.size())]->hit(there[rand() % (there.size())]);
-		else//攻击嘲讽的随从
-			here[pm % (here.size())]->hit(youtaunt[rand() % (youtaunt.size())]);
+			index = rand() % (there.size());
+		else {//找到嘲讽的随从
+			i = rand() % (youtaunt.size());
+			for (index = 0; index < there.size(); index++) {
+				if (there[index] == youtaunt[i]) {
+					break;
+				}
+			}
+		}
+
+		here[pm % (here.size())]->hit(there[index]);
 
 		if (here[pm % (here.size())]->is_alive())//当前随从没有死亡，下一随从进行下次进攻
 			pm++;
@@ -119,9 +128,18 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 		}
 
 		if (mytaunt.size() == 0)//我方没有嘲讽
-			there[pn % (there.size())]->hit(here[rand() % (here.size())]);
-		else
-			there[pn % (there.size())]->hit(mytaunt[rand() % (mytaunt.size())]);
+			index = rand() % (here.size());
+		else {
+			i = rand() % (mytaunt.size());
+			for (index = 0; index < here.size(); index++) {//找到我方嘲讽随从位置
+				if (here[index] == mytaunt[i]) {
+					break;
+				}
+			}
+		}
+
+		there[pn % (there.size())]->hit(here[index]);
+
 		if (there[pn % (there.size())]->is_alive())
 			pn++;
 		clearMinion(here);
