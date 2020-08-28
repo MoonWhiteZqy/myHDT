@@ -10,62 +10,59 @@
 
 using namespace std;
 
+
+
+vector<unordered_map<string, vector<int>>> cards;
+
 //删除已经死去的随从
 int clearMinion(vector<minion*>& infos) {
 	int res = 0;
 	int i;
-	int j;
+	int j = 0;//用来算reborn
 	int idle;//确认亡语、复生的随从数量
 	int state;
+	int nana = 0;
 	int total = 0;//亡语等触发后随从的总数，最大为7
+	int guzhicount = 0;
 	queue<int> nextstate;
 	vector<minion*> temp(7);
+	vector<string> reborns;
 
 	for (i = 0; i < infos.size(); i++) {
 		if (!infos[i]->is_alive()) {//发现列表中有死去的随从
-			if (infos[i]->has_death() == MOUSE) {
-				for (j = 0; j < infos[i]->read_attack(); j++) {
-					nextstate.push(MOUSE);
-					total++;
+			if (infos[i]->has_death()) {//随从具有亡语
+				if (infos[i]->read_name() == "瘟疫鼠群") {
+					for (j = 0; j < infos[i]->read_attack(); j++) {
+						nextstate.push(MOUSE);
+						total++;
+					}
+				}
+				else if (infos[i]->read_name() == "寄生饿狼") {
+					nextstate.push(SPIDER);
+					nextstate.push(SPIDER);
+					total += 2;
+				}
+				else if (infos[i]->read_name() == "长鬃草原狮") {
+					nextstate.push(LION);
+					nextstate.push(LION);
+					total += 2;
+				}
+				else if (infos[i]->has_death() > MECHSS) {//机械亡语，将宏设定为较大值，通过差值确认亡语数量
+					for (j = 0; j < infos[i]->has_death() - MECHSS; j++) {
+						nextstate.push(LMECH);
+						total++;
+					}
+				}
+				else if (infos[i]->read_name() == "红衣纳迪娜") {
+					nana = 1;
 				}
 			}
-			//发现老鼠的亡语
-			/*
-			if (infos[i]->has_death() == MOUSE) {
-				minion* temp = infos[i];
-				int rest = 8 - infos.size();
-				int exist = infos.size();
-				if (temp->read_attack() < rest) {//触发亡语后有多余空位
-					infos.resize(infos.size() + temp->read_attack() - 1);
-					for (j = 1; j <= temp->read_attack() && i + j < exist; j++) {
-						infos[i + j + temp->read_attack() - 1] = infos[i + j];
-					}
-					for (j = 0; j < temp->read_attack(); j++) {
-						infos[i + j] = new minion("小老鼠", 1, 1);
-					}
-					i += temp->read_attack();
-					delete temp;
-					continue;
-				}
-				else {//格子是满的
-					infos.resize(7);
-					for (j = i + 1; j < exist; j++) {
-						infos[7 - exist + j] = infos[j];
-					}
-					for (j = i; j < 8 - exist + i; j++) {
-						infos[j] = new minion("小老鼠", 1, 1);
-					}
-					delete temp;
-					continue;
-				}
-			}*/
+			if (infos[i]->has_reborn()) {//发现死亡随从具有复生
+				nextstate.push(REBORN);
+				reborns.push_back(infos[i]->read_name());
+				total++;
+			}
 			delete (infos[i]);
-			/*
-			for (j = i; j < infos.size() - 1; j++) {
-				infos[j] = infos[j + 1];
-			}
-			infos.resize(infos.size() - 1);
-			*/
 		}
 		else {
 			nextstate.push(i);//记录未死亡随从的原本位置，并保存副本
@@ -76,6 +73,7 @@ int clearMinion(vector<minion*>& infos) {
 	}
 	idle = 7 - res;
 	i = 0;
+	j = 0;
 	if (total > 7)
 		infos.resize(7);
 	else
@@ -87,14 +85,60 @@ int clearMinion(vector<minion*>& infos) {
 		}
 		else if (state == MOUSE) {
 			if (idle > 0) {
-				infos[i++] = new minion("小老鼠", 1, 1);
+				infos[i++] = new minion("小老鼠", 1, 1, BEAST);
 				idle--;
 			}
-			else {
-
+		}
+		else if (state == SPIDER) {
+			if (idle > 0) {
+				infos[i++] = new minion("小蜘蛛", 1, 1, BEAST);
+				idle--;
+			}
+		}
+		else if (state == LION) {
+			if (idle > 0) {
+				infos[i++] = new minion("小狮子", 2, 2, BEAST);
+				idle--;
+			}
+		}
+		else if (state == LMECH) {
+			if (idle > 0) {
+				infos[i++] = new minion("小机器人", 1, 1, MECH);
+				idle--;
+				guzhicount++;
+			}
+		}
+		else if (state == REBORN) {
+			if (idle > 0) {
+				int k;
+				for (k = 0; k < 6; k++) {
+					if (cards[k].count(reborns[j])) {
+						break;
+					}
+				}
+				infos[i] = new minion(reborns[j], cards[k][reborns[j]]);
+				infos[i]->lose_reborn();
+				infos[i]->gain_buff(0, 1 - infos[i]->read_attack(), 0, 0, 0);
+				i++;
+				j++;
 			}
 		}
 		nextstate.pop();
+	}
+	if (guzhicount) {
+		for (i = 0; i < infos.size(); i++) {
+			if (infos[i]->read_name() == "偏折机器人") {
+				infos[i]->gain_buff(guzhicount, 0, 1, 0, 0);
+			}
+		}
+	}
+
+	if (nana) {
+		for (i = 0; i < infos.size(); i++) {
+			if (infos[i]->read_racial() == DRAGON) {
+				infos[i]->gain_buff(0, 0, 1, 0, 0);
+			}
+		}
 	}
 
 	return res;
@@ -122,6 +166,8 @@ void showMinion(vector<minion*>& infos) {
 			cout << " 亡语";
 		if (p->is_poisonous())
 			cout << " 剧毒";
+		if (p->has_reborn())
+			cout << " 复生";
 		cout << endl;
 	}
 	cout << "展示完毕" << endl;
@@ -281,12 +327,45 @@ unordered_map<string, vector<int>> card_info(int no) {
 			}
 			i++;
 		}
+		if (name == "量产型恐吓机")
+			info[6] = MECHSS + 3;
 		card[name] = info;
 
 	}
 	return card;
 }
 
+
+//决定出场的随从
+void choose_minion(vector<minion*>& lineup) {
+	string name;
+	int attack, health, shield, taunt, reborn;
+	int i;
+	while (cin >> name) {
+		if (name == "结束")
+			break;
+		for (i = 0; i < 6; i++) {
+			if (cards[i].count(name)) {
+				lineup.push_back(new minion(name, cards[i][name]));
+				cout << "这就是你要找的那一个，要来点buff吗" << endl;
+				cout << "攻击、血量、圣盾、嘲讽、复生" << endl;
+				cin >> attack >> health >> shield >> taunt >> reborn;
+				lineup[lineup.size() - 1]->gain_buff(attack, health, shield, taunt, reborn);
+				cout << "哦豁，你又前进了一大步" << endl;
+				break;
+			}
+		}
+		for (i = 0; i < lineup.size(); i++)
+			lineup[i]->showcard();
+		if (lineup.size() == 7) {
+			cout << "我会暗中支持你的，可别告诉别人" << endl;
+			break;
+		}
+		if (i == 6) {
+			cout << "没关系人生难免不如意" << endl;
+		}
+	}
+}
 
 int main() {
 	int win = 0;
@@ -297,8 +376,6 @@ int main() {
 	int n = 1000;
 	int state;
 	string command;
-	string name;
-	vector<unordered_map<string, vector<int>>> cards;
 	vector<minion*> myminion;
 	vector<minion*> yourminion;
 	for (i = 1; i < 7; i++) {
@@ -321,37 +398,12 @@ int main() {
 		}
 	}
 	else {
-		cout << "输入你的随从的名字" << endl;
-		while (cin >> name) {
-			if (name == "结束")
-				break;
-			for (i = 0; i < 6; i++) {
-				if (cards[i].count(name)) {
-					myminion.push_back(new minion(name, cards[i][name]));
-					cout << "这就是你要找的那一个" << endl;
-					break;
-				}
-			}
-			if (i == 6) {
-				cout << "没关系人生难免不如意" << endl;
-			}
-		}
-		cout << endl << "输入对手的随从的名字" << endl;
-		while (cin >> name) {
-			if (name == "结束")
-				break;
-			for (i = 0; i < 6; i++) {
-				if (cards[i].count(name)) {
-					yourminion.push_back(new minion(name, cards[i][name]));
-					cout << "这就是你要找的那一个" << endl;
-					break;
-				}
-			}
-			if (i == 6) {
-				cout << "没关系人生难免不如意" << endl;
-			}
-		}
-		cout << endl;
+
+		cout << endl << "现在开始选择你的随从，输入他们的名字" << endl;
+		choose_minion(myminion);
+
+		cout << endl << "现在开始选择对手的随从，输入他们的名字" << endl;
+		choose_minion(yourminion);
 	}
 
 

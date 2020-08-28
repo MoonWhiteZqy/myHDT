@@ -3,6 +3,11 @@
 #include<vector>
 #include<string>
 #define MOUSE	8
+#define SPIDER	9
+#define LION	10
+#define MECHSS	100
+#define LMECH	11
+#define REBORN	20
 #define BEAST	1
 #define DEMON	2
 #define MECH	3
@@ -27,6 +32,14 @@ public:
 		racial = 0;
 	}
 
+	//简单衍生物(带种族)
+	minion(std::string namein, int attackin, int healthin, int racialin) {
+		name = namein;
+		attack = attackin;
+		health = healthin;
+		racial = racialin;
+	}
+
 	//带特效构造函数
 	minion(std::string namein, int attackin, int healthin, int shieldin, int tauntin, int nearbyin, int rebornin, int deathrattlein, int poisonousin, int racialin) {
 		name = namein;
@@ -42,6 +55,7 @@ public:
 		racial = racialin;
 	}
 
+	//带数组构造函数
 	minion(std::string namein, std::vector<int> info) {
 		name = namein;
 		attack = info[0];
@@ -101,11 +115,11 @@ public:
 
 	//受到敌人攻击后生命值判断
 	void get_hit(int injure, std::string enemy_name) {
-		if (this->has_shield()) {
-			this->lose_shield();
+		if (has_shield()) {
+			lose_shield();
 			return;
 		}
-		this->health -= injure;
+		health -= injure;
 		//std::cout << name << "受到了来自" << enemy_name << "的" << injure << "点伤害,";
 		if (this->health < 1) {
 			//std::cout << name << "已经死亡" << std::endl;
@@ -151,6 +165,9 @@ public:
 	//判断复生
 	int has_reborn() { return reborn; }
 
+	//复生后失去复生
+	void lose_reborn() { reborn = 0; }
+
 	//判断狂战斧
 	int hit_nearby() { return nearby; }
 	
@@ -171,6 +188,18 @@ public:
 
 	//有特效
 	int has_special() { return special; }
+
+	//获取buff，包括身材、圣盾、嘲讽、复生
+	void gain_buff(int gain_attack, int gain_health, int gain_shield, int gain_taunt, int gain_reborn) {
+		attack += gain_attack;
+		health += gain_health;
+		if (!shield)
+			shield = gain_shield;
+		if (!taunt)
+			taunt = gain_taunt;
+		if (!reborn)
+			reborn = gain_reborn;
+	}
 
 	//展示卡片
 	void showcard() {
