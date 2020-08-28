@@ -3,6 +3,9 @@
 #include<random>
 #include<ctime>
 #include<queue>
+#include<unordered_map>
+#include<fstream>
+#include<sstream>
 
 
 using namespace std;
@@ -222,6 +225,69 @@ void judgeWin(int& win, int& deal, int& lose, int end) {
 
 }
 
+
+unordered_map<string, vector<int>> card_info(int no) {
+	string fileName = "卡牌信息0";
+	fileName += '0' + no;
+	fileName += ".txt";
+	ifstream readFile(fileName);
+	unordered_map<string, vector<int>> card;
+	string s;
+	string name;
+	int i;
+	string word;
+	while (getline(readFile, s)) {
+		vector<int> info(10, 0);
+		//圣盾2、 嘲讽3、 狂战4、 复生5、 亡语6、 剧毒7、 种族8、 特效9
+		istringstream words(s);
+		i = 0;
+		while (words >> word) {
+			if (i == 0) {
+				name = word;
+			}
+			else if (i < 3) {
+				info[i - 1] = stoi(word);
+			}
+			else {
+				if (word == "圣盾") {
+					info[2] = 1;
+				}
+				else if (word == "嘲讽")
+					info[3] = 1;
+				else if (word == "狂战")
+					info[4] = 1;
+				else if (word == "复生")
+					info[5] = 1;
+				else if (word == "亡语")
+					info[6] = 1;
+				else if (word == "剧毒")
+					info[7] = 1;
+				else if (word == "鱼人")
+					info[8] = MURLOC;
+				else if (word == "野兽")
+					info[8] = BEAST;
+				else if (word == "龙")
+					info[8] = DRAGON;
+				else if (word == "机械")
+					info[8] = MECH;
+				else if (word == "全部")
+					info[8] = ALL;
+				else if (word == "恶魔")
+					info[8] = DEMON;
+				else if (word == "海盗")
+					info[8] = PIRATE;
+				else if (word == "特效")
+					info[9] = 1;
+			}
+			i++;
+		}
+		card[name] = info;
+
+	}
+	return card;
+}
+
+
 int main() {
 	int win = 0;
 	int deal = 0;
@@ -230,31 +296,78 @@ int main() {
 	int end;
 	int n = 1000;
 	int state;
+	string command;
+	string name;
+	vector<unordered_map<string, vector<int>>> cards;
+	vector<minion*> myminion;
+	vector<minion*> yourminion;
+	for (i = 1; i < 7; i++) {
+		cards.push_back(card_info(i));
+	}
 	srand((int)time(NULL));
-	cout << "嘿我最喜欢的指挥官回来了，准备来一局吗" << endl << endl;
+	cout << "嘿我最喜欢的指挥官回来了，准备来一局吗" << endl << endl << "输入1查看随从， 输入2选择随从" << endl;
+
+	cin >> command;
+
+	if (command == "1") {
+		cout << "输入酒馆的等级" << endl;
+		while (cin >> i) {
+			for (auto p : cards[i - 1]) {
+				minion* single = new minion(p.first, p.second);
+				single->showcard();
+				delete single;
+			}
+			cout << endl << "你问我怎么招的这些随从，四个字，漏斗蛋糕" << endl;
+		}
+	}
+	else {
+		cout << "输入你的随从的名字" << endl;
+		while (cin >> name) {
+			if (name == "结束")
+				break;
+			for (i = 0; i < 6; i++) {
+				if (cards[i].count(name)) {
+					myminion.push_back(new minion(name, cards[i][name]));
+					cout << "这就是你要找的那一个" << endl;
+					break;
+				}
+			}
+			if (i == 6) {
+				cout << "没关系人生难免不如意" << endl;
+			}
+		}
+		cout << endl << "输入对手的随从的名字" << endl;
+		while (cin >> name) {
+			if (name == "结束")
+				break;
+			for (i = 0; i < 6; i++) {
+				if (cards[i].count(name)) {
+					yourminion.push_back(new minion(name, cards[i][name]));
+					cout << "这就是你要找的那一个" << endl;
+					break;
+				}
+			}
+			if (i == 6) {
+				cout << "没关系人生难免不如意" << endl;
+			}
+		}
+		cout << endl;
+	}
+
+
 	for (i = 0; i < n; i++) {
-		minion* my1 = new minion("瘟疫鼠群5", 5, 5, 0, 1, 0, 0, 0, 0, 0);
-		//minion* my2 = new minion("我2", 2, 1, 0, 0, 0, 0, 0, 0);
-		minion* my3 = new minion("瘟疫鼠群4", 2, 4, 0, 0, 0, 0, MOUSE, 1, 0);
-		//minion* my4 = new minion("我4", 3, 3);
-		//minion* my5 = new minion("我5", 1, 1, 0, 1, 0, 0, 0, 0);
-		//minion* my6 = new minion("我6", 6, 6);
-		//minion* my7 = new minion("我7", 10, 10);
-		//minion* you1 = new minion("你1", 1, 1);
-		//minion* you2 = new minion("你2", 2, 2);
-		//minion* you3 = new minion("你3", 3, 3);
-		//minion* you4 = new minion("你4", 4, 4);
-		//minion* you5 = new minion("你5", 2, 2);
-		minion* you6 = new minion("你6", 5, 6, 0, 0, 1, 0, 0, 0, 0);
-		minion* you7 = new minion("你7", 10, 7);
 		vector<minion*> here;
 		vector<minion*> there;
-		//here = { my7, my6, my5, my4, my3, my2, my1 };
-		//there = { you7, you6, you5, you4, you3, you2, you1 };
-		here = { my3, my1 };
-		there = { you6, you7 };
-		//showMinion(here);
-		//showMinion(there);
+
+		here.resize(myminion.size());
+		for (int m = 0; m < here.size(); m++) {
+			here[m] = new minion(myminion[m]);
+		}
+		there.resize(yourminion.size());
+		for (int n = 0; n < there.size(); n++) {
+			there[n] = new minion(yourminion[n]);
+		}
+
 		if (i == 0) {
 			cout << "你的随从:" << endl;
 			showMinion(here);

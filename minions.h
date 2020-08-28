@@ -2,7 +2,14 @@
 #include<iostream>
 #include<vector>
 #include<string>
-#define MOUSE 8
+#define MOUSE	8
+#define BEAST	1
+#define DEMON	2
+#define MECH	3
+#define	DRAGON	4
+#define MURLOC	5
+#define PIRATE	6
+#define ALL		7
 
 class minion {
 public:
@@ -35,11 +42,42 @@ public:
 		racial = racialin;
 	}
 
+	minion(std::string namein, std::vector<int> info) {
+		name = namein;
+		attack = info[0];
+		health = info[1];
+		shield = info[2];
+		taunt = info[3];
+		nearby = info[4];
+		reborn = info[5];
+		deathrattle = info[6];
+		poisonous = info[7];
+		racial = info[8];
+		special = info[9];
+	}
+
+	minion(minion* exist) {
+		name = exist->read_name();
+		attack = exist->read_attack();
+		health = exist->read_health();
+		shield = exist->has_shield();
+		taunt = exist->has_taunt();
+		nearby = exist->hit_nearby();
+		reborn = exist->has_reborn();
+		deathrattle = exist->has_death();
+		poisonous = exist->is_poisonous();
+		racial = exist->read_racial();
+		special = exist->has_special();
+	}
+
 	//返回攻击力
 	int read_attack() { return attack; }
 
 	//返回生命值
 	int read_health() { return health; }
+
+	//返回种族
+	int read_racial() { return racial; }
 
 	//破盾
 	void lose_shield() {
@@ -131,6 +169,42 @@ public:
 	//剧毒秒杀
 	void get_poisonous() { alive = 0; health = 0; }
 
+	//有特效
+	int has_special() { return special; }
+
+	//展示卡片
+	void showcard() {
+		std::cout << name << ' ';
+		std::cout << attack << '/' << health << ' ';
+		if (racial == MURLOC)
+			std::cout << "鱼人 ";
+		else if (racial == BEAST)
+			std::cout << "野兽 ";
+		else if (racial == DRAGON)
+			std::cout << "龙 ";
+		else if (racial == DEMON)
+			std::cout << "恶魔 ";
+		else if (racial == MECH)
+			std::cout << "机械 ";
+		else if (racial == PIRATE)
+			std::cout << "海盗 ";
+		else if (racial == ALL)
+			std::cout << "全部";
+		if (shield)
+			std::cout << "圣盾 ";
+		if (taunt)
+			std::cout << "嘲讽 ";
+		if (nearby)
+			std::cout << "狂战 ";
+		if (reborn)
+			std::cout << "复生 ";
+		if (deathrattle)
+			std::cout << "亡语 ";
+		if (special)
+			std::cout << "特效 ";
+		std::cout << std::endl;
+	}
+
 	//析构函数
 	virtual ~minion() {
 		//std::cout << name << "被移除" << std::endl;
@@ -141,13 +215,14 @@ private:
 	std::string name;//名字
 	int health;//生命值
 	int attack;//攻击力
-	int alive;//存活为1，死亡为0
-	int shield;//圣盾
-	int taunt;//嘲讽
-	int nearby;//狂战斧
-	int reborn;//复生
-	int deathrattle;//亡语
+	int alive = 1;//存活为1，死亡为0
+	int shield = 0;//圣盾
+	int taunt = 0;//嘲讽
+	int nearby = 0;//狂战斧
+	int reborn = 0;//复生
+	int deathrattle = 0;//亡语
 	int poisonous = 0;//剧毒
 	int racial;//种族
 	int attacked = 0;
+	int special = 0;
 };
