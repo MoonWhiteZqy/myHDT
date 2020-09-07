@@ -23,38 +23,52 @@ int clearMinion(vector<minion*>& infos) {
 	int state;
 	int nana = 0;
 	int total = 0;//亡语等触发后随从的总数，最大为7
-	int guzhicount = 0;
+	int guzhicount = 0;//钴制卫士的机械计数
+	int xiaohuangshield = 0;//小黄的圣盾
 	queue<int> nextstate;
 	vector<minion*> temp(7);
 	vector<string> reborns;
+	vector<int> toshield;//获得小黄的圣盾的随从编号
+	int deathtime = 1;//瑞文的效果
+	int d;
+	int erziindex;//子嗣亡语的指针
+
+	for (i = 0; i < infos.size(); i++) {
+		if (infos[i]->read_name() == "瑞文戴尔男爵" && infos[i]->is_alive())
+			deathtime = 2;
+	}
 
 	for (i = 0; i < infos.size(); i++) {
 		if (!infos[i]->is_alive()) {//发现列表中有死去的随从
 			if (infos[i]->has_death()) {//随从具有亡语
 				if (infos[i]->read_name() == "瘟疫鼠群") {
 					for (j = 0; j < infos[i]->read_attack(); j++) {
-						nextstate.push(MOUSE);
+						for (d = 0; d < deathtime; d++)	nextstate.push(MOUSE);
 						total++;
 					}
 				}
 				else if (infos[i]->read_name() == "寄生饿狼") {
-					nextstate.push(SPIDER);
-					nextstate.push(SPIDER);
+					for(d = 0; d < deathtime * 2; d++) nextstate.push(SPIDER);
 					total += 2;
 				}
 				else if (infos[i]->read_name() == "长鬃草原狮") {
-					nextstate.push(LION);
-					nextstate.push(LION);
+					for (d = 0; d < deathtime * 2; d++) nextstate.push(LION);
 					total += 2;
 				}
 				else if (infos[i]->has_death() > MECHSS) {//机械亡语，将宏设定为较大值，通过差值确认亡语数量
 					for (j = 0; j < infos[i]->has_death() - MECHSS; j++) {
-						nextstate.push(LMECH);
+						for (d = 0; d < deathtime * 2; d++) nextstate.push(LMECH);
 						total++;
 					}
 				}
 				else if (infos[i]->read_name() == "红衣纳迪娜") {
 					nana = 1;
+				}
+				else if (infos[i]->read_name() == "无私的英雄") {
+					xiaohuangshield += deathtime;
+				}
+				else if (infos[i]->read_name() == "恩佐斯的子嗣") {
+					for (d = 0; d < deathtime; d++) nextstate.push(ERZI);
 				}
 			}
 			if (infos[i]->has_reborn()) {//发现死亡随从具有复生
@@ -82,6 +96,7 @@ int clearMinion(vector<minion*>& infos) {
 		state = nextstate.front();
 		if (state < 7) {
 			infos[i++] = temp[state];
+			temp[state] = NULL;
 		}
 		else if (state == MOUSE) {
 			if (idle > 0) {
@@ -123,6 +138,18 @@ int clearMinion(vector<minion*>& infos) {
 				j++;
 			}
 		}
+		else if (state == ERZI) {
+			for (erziindex = 0; erziindex < i; erziindex++) {//对已经进入最终随从区域的随从buff
+				infos[erziindex]->gain_buff(1, 1, 0, 0, 0);
+			}
+			for (erziindex = 0; erziindex < 7; erziindex++) {//对处在temp数组的随从buff
+				if (temp[erziindex] == NULL) {
+					continue;
+				}
+				else
+					temp[erziindex]->gain_buff(1, 1, 0, 0, 0);
+			}
+		}
 		nextstate.pop();
 	}
 	if (guzhicount) {
@@ -139,6 +166,18 @@ int clearMinion(vector<minion*>& infos) {
 				infos[i]->gain_buff(0, 0, 1, 0, 0);
 			}
 		}
+	}
+	for (i = 0; i < xiaohuangshield; i++) {
+		toshield.resize(0);
+		for (j = 0; j < infos.size(); j++) {
+			if (!infos[j]->has_shield()) {
+				toshield.push_back(j);
+			}
+		}
+		if (toshield.size() == 0)
+			break;
+		int huang = rand() % toshield.size();
+		infos[toshield[huang]]->gain_buff(0, 0, 1, 0, 0);
 	}
 
 	return res;
