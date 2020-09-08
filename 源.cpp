@@ -44,22 +44,26 @@ int clearMinion(vector<minion*>& infos) {
 				if (infos[i]->read_name() == "瘟疫鼠群") {
 					for (j = 0; j < infos[i]->read_attack(); j++) {
 						for (d = 0; d < deathtime; d++)	nextstate.push(MOUSE);
-						total++;
+						total += deathtime;
 					}
 				}
 				else if (infos[i]->read_name() == "寄生饿狼") {
 					for(d = 0; d < deathtime * 2; d++) nextstate.push(SPIDER);
-					total += 2;
+					total += 2 * deathtime;
 				}
 				else if (infos[i]->read_name() == "长鬃草原狮") {
 					for (d = 0; d < deathtime * 2; d++) nextstate.push(LION);
-					total += 2;
+					total += 2 * deathtime;
 				}
 				else if (infos[i]->has_death() > MECHSS) {//机械亡语，将宏设定为较大值，通过差值确认亡语数量
 					for (j = 0; j < infos[i]->has_death() - MECHSS; j++) {
 						for (d = 0; d < deathtime * 2; d++) nextstate.push(LMECH);
-						total++;
+						total += deathtime;
 					}
+				}
+				else if (infos[i]->read_name() == "机械蛋") {
+					for (d = 0; d < deathtime; d++) nextstate.push(EGG);
+					total += deathtime;
 				}
 				else if (infos[i]->read_name() == "红衣纳迪娜") {
 					nana = 1;
@@ -119,6 +123,13 @@ int clearMinion(vector<minion*>& infos) {
 		else if (state == LMECH) {
 			if (idle > 0) {
 				infos[i++] = new minion("小机器人", 1, 1, MECH);
+				idle--;
+				guzhicount++;
+			}
+		}
+		else if (state == EGG) {
+			if (idle > 0) {
+				infos[i++] = new minion("机械恐龙", 8, 8, MECH);
 				idle--;
 				guzhicount++;
 			}
@@ -218,6 +229,8 @@ void showMinion(vector<minion*>& infos) {
 int attackindex(vector<minion*>& knownminion) {
 	int i;
 	int n = knownminion.size();
+	if (n == 0)
+		return 0;
 	if (knownminion[n - 1]->has_attacked()) {//最后一个随从也已经进行攻击，则重置所有随从的攻击
 		for (i = 0; i < n; i++) {
 			knownminion[i]->reset_attacked();
@@ -227,8 +240,22 @@ int attackindex(vector<minion*>& knownminion) {
 	else {
 		for (i = n - 2; i > -1; i--) {//从末尾寻找已攻击随从，返回下一个随从的序号，找不到则从头开始攻击
 			if (knownminion[i]->has_attacked())
-				return i + 1;
+				break;
 		}
+
+		i++;
+
+		while (i < n) {//从第一个未攻击过的随从位置开始寻找
+			if (knownminion[i]->read_attack() > 0) {//对于有攻击力的随从，返回序号
+				return i;
+			}
+			else {//没有攻击力的随从，设定为已攻击，忽略
+				knownminion[i]->set_attacked();
+				i++;
+			}
+		}
+		if (i == n)//当前已经无随从可攻击
+			return -1;
 	}
 	return 0;
 }
@@ -239,6 +266,7 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 	int attind;//进行攻击随从的序号
 	int index;//受到攻击随从的序号
 	int attackstate = 0;
+	int noattack = 0;
 	vector<minion*> hitter;
 	vector<minion*> hittee;
 	
@@ -271,6 +299,23 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 
 
 		attind = attackindex(hitter);
+		if (attind == -1) {//自己随从都不可以攻击了
+			if (noattack) {//对手已经出现无攻击力情况
+				return -2;//平局
+			}
+			else {
+				noattack = 1;
+				continue;//让对手进行攻击
+			}
+		}
+		else {//找到能攻击的随从，重置不能攻击状态
+			noattack = 0;
+		}
+
+		if (hitter[attind]->read_name() == "雕文护卫者") {//翻倍龙特效
+			hitter[attind]->gain_buff(hitter[attind]->read_attack(), 0, 0, 0, 0);
+		}
+
 		hitter[attind]->hit(hittee[index]);
 		//狂战斧特效判定
 		if (hitter[attind]->hit_nearby()) {

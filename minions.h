@@ -8,6 +8,7 @@
 #define MECHSS	100
 #define LMECH	11
 #define ERZI	12
+#define EGG		13
 #define REBORN	20
 #define BEAST	1
 #define DEMON	2
