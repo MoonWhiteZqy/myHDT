@@ -6,8 +6,6 @@
 #include<unordered_map>
 #include<fstream>
 #include<sstream>
-
-
 using namespace std;
 
 
@@ -356,7 +354,7 @@ void judgeWin(int& win, int& deal, int& lose, int end) {
 }
 
 
-unordered_map<string, vector<int>> card_info(int no) {
+unordered_map<string, vector<int>> card_info(int no) {//读入已存在的卡牌信息
 	string fileName = "卡牌信息0";
 	fileName += '0' + no;
 	fileName += ".txt";
@@ -451,6 +449,63 @@ void choose_minion(vector<minion*>& lineup) {
 	}
 }
 
+void read_minion(vector<minion*>& upminion, string info) {
+	if (upminion.size() == 7) {
+		cout << "当前场面已达到上限，请检查是否忘记换行" << endl;
+		return;
+	}
+	else {
+		istringstream words(info);
+		string word;//单独信息
+		string name;
+		int i = 0;//前三为基础信息，而后为额外buff
+		int j;//用来根据数据库生成随从
+		int attack, health;
+		int shield, taunt, reborn;
+		shield = 0;
+		taunt = 0;
+		reborn = 0;
+		while (words >> word) {
+			if (i == 0) {
+				name = word;
+			}
+			else if (i == 1) {
+				attack = stoi(word);
+			}
+			else if (i == 2) {
+				health = stoi(word);
+			}
+			else if(word == "圣盾"){
+				shield = 1;
+			}
+			else if (word == "嘲讽") {
+				taunt = 1;
+			}
+			else if (word == "复生") {
+				reborn = 1;
+			}
+			else {
+				cout << "检测到不明信息" << endl;
+			}
+			i++;
+		}
+		for (j = 0; j < 6; j++) {
+			if (cards[j].count(name))
+				break;
+		}
+		if (j == 6) {
+			cout << "查无随从名:" << name << endl;
+			return;
+		}
+		else {
+			minion* miniona = new minion(name, cards[j][name]);
+			miniona->gain_buff(attack - miniona->read_attack(), health - miniona->read_health(), shield, taunt, reborn);//导入输入的身材和对应buff
+			upminion.push_back(miniona);//压入随从队列中
+		}
+	}
+
+}
+
 int main() {
 	int win = 0;
 	int deal = 0;
@@ -460,16 +515,18 @@ int main() {
 	int n = 1000;
 	int state;
 	string command;
+	int readstate = 0;
 	vector<minion*> myminion;
 	vector<minion*> yourminion;
 	for (i = 1; i < 7; i++) {
 		cards.push_back(card_info(i));
 	}
 	srand((int)time(NULL));
-	cout << "嘿我最喜欢的指挥官回来了，准备来一局吗" << endl << endl << "输入1查看随从， 输入2选择随从" << endl;
+	cout << "嘿我最喜欢的指挥官回来了，准备来一局吗" << endl << endl << "输入1查看随从， 输入2选择随从， 输入3读取写好场面" << endl;
 
 	cin >> command;
 
+	//命令为1查看酒馆，2选择随从，3从文件读取阵容
 	if (command == "1") {
 		cout << "输入酒馆的等级" << endl;
 		while (cin >> i) {
@@ -481,13 +538,33 @@ int main() {
 			cout << endl << "你问我怎么招的这些随从，四个字，漏斗蛋糕" << endl;
 		}
 	}
-	else {
+	else if (command == "2") {
 
 		cout << endl << "现在开始选择你的随从，输入他们的名字" << endl;
 		choose_minion(myminion);
 
 		cout << endl << "现在开始选择对手的随从，输入他们的名字" << endl;
 		choose_minion(yourminion);
+	}
+	else if (command == "3") {
+		string fileName = "场上随从.txt";
+		ifstream readFile(fileName);
+		string s;
+		while (getline(readFile, s)) {
+			if (s == "") {//读到空白行，状态转换
+				readstate = 1;//开始读取敌方随从
+				continue;
+			}
+			if (!readstate) {
+				read_minion(myminion, s);
+			}
+			else {
+				read_minion(yourminion, s);
+			}
+		}
+	}
+	else {
+		cout << "不存在的命令" << endl;
 	}
 
 
@@ -504,11 +581,14 @@ int main() {
 			there[n] = new minion(yourminion[n]);
 		}
 
-		if (i == 0) {
+		if (i == 0) {//第一次循环时，输出双方场面
 			cout << "你的随从:" << endl;
-			showMinion(here);
+			for (auto p : here) {
+				p->showcard();
+			}
 			cout << "敌方随从:" << endl;
-			showMinion(there);
+			for (auto p : there)
+				p->showcard();
 		}
 		else {
 			//break;
