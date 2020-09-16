@@ -12,6 +12,28 @@ using namespace std;
 
 vector<unordered_map<string, vector<int>>> cards;
 
+
+//实现钴制卫士特效
+void guzhibuff(vector<minion*>& infos, vector<minion*>& temp){
+	int i;
+	for(i = 0; i < infos.size(); i++){
+		if(infos[i] == NULL){
+			continue;
+		}
+		else if(infos[i]->read_name() == "偏折机器人"){
+			infos[i]->gain_buff(1, 0, 1, 0, 0);
+		}
+	}
+	for(i = 0; i < temp.size(); i++){
+		if(temp[i] == NULL){
+			continue;
+		}
+		else if(temp[i]->read_name() == "偏折机器人"){
+			temp[i]->gain_buff(1, 0, 1, 0, 0);
+		}
+	}
+}
+
 //删除已经死去的随从
 int clearMinion(vector<minion*>& infos) {
 	int res = 0;
@@ -21,7 +43,6 @@ int clearMinion(vector<minion*>& infos) {
 	int state;
 	int nana = 0;
 	int total = 0;//亡语等触发后随从的总数，最大为7
-	int guzhicount = 0;//钴制卫士的机械计数
 	int xiaohuangshield = 0;//小黄的圣盾
 	queue<int> nextstate;
 	vector<minion*> temp(7);
@@ -29,7 +50,7 @@ int clearMinion(vector<minion*>& infos) {
 	vector<int> toshield;//获得小黄的圣盾的随从编号
 	int deathtime = 1;//瑞文的效果
 	int d;
-	int erziindex;//子嗣亡语的指针
+	int erziindex;//子嗣亡语的i变量
 
 	for (i = 0; i < infos.size(); i++) {
 		if (infos[i]->read_name() == "瑞文戴尔男爵" && infos[i]->is_alive())
@@ -53,9 +74,17 @@ int clearMinion(vector<minion*>& infos) {
 					for (d = 0; d < deathtime * 2; d++) nextstate.push(LION);
 					total += 2 * deathtime;
 				}
+				else if (infos[i]->read_name() == "小鬼囚徒") {
+					for (d = 0; d < deathtime; d++)nextstate.push(LDEMON);
+					total += deathtime;
+				}
+				else if (infos[i]->read_name() == "麦田傀儡") {
+					for (d = 0; d < deathtime; d++)nextstate.push(MAITIAN);
+					total += deathtime;
+				}
 				else if (infos[i]->has_death() > MECHSS) {//机械亡语，将宏设定为较大值，通过差值确认亡语数量
 					for (j = 0; j < infos[i]->has_death() - MECHSS; j++) {
-						for (d = 0; d < deathtime * 2; d++) nextstate.push(LMECH);
+						for (d = 0; d < deathtime; d++) nextstate.push(LMECH);
 						total += deathtime;
 					}
 				}
@@ -90,16 +119,17 @@ int clearMinion(vector<minion*>& infos) {
 	idle = 7 - res;
 	i = 0;
 	j = 0;
+	infos.clear();
 	if (total > 7)
 		infos.resize(7);
 	else
 		infos.resize(total);
 	while (!nextstate.empty()) {
 		state = nextstate.front();
-		if (state < 7) {
+		if (state < 7) {//原有随从并未死亡， 从temp处放回
 			infos[i++] = temp[state];
 			temp[state] = NULL;
-		}
+		}//将亡语产生随从放入
 		else if (state == MOUSE) {
 			if (idle > 0) {
 				infos[i++] = new minion("小老鼠", 1, 1, BEAST);
@@ -118,21 +148,34 @@ int clearMinion(vector<minion*>& infos) {
 				idle--;
 			}
 		}
+		else if (state == LDEMON) {
+			if (idle > 0) {
+				infos[i++] = new minion("小鬼", 1, 1, DEMON);
+				idle--;
+			}
+		}
+		else if (state == MAITIAN) {
+			if (idle > 0) {
+				infos[i++] = new minion("稻草人", 2, 1, MECH);
+				idle--;
+				guzhibuff(infos, temp);
+			}
+		}
 		else if (state == LMECH) {
 			if (idle > 0) {
 				infos[i++] = new minion("小机器人", 1, 1, MECH);
 				idle--;
-				guzhicount++;
+				guzhibuff(infos, temp);
 			}
 		}
 		else if (state == EGG) {
 			if (idle > 0) {
 				infos[i++] = new minion("机械恐龙", 8, 8, MECH);
 				idle--;
-				guzhicount++;
+				guzhibuff(infos, temp);
 			}
 		}
-		else if (state == REBORN) {
+		else if (state == REBORN) {//放入复生随从
 			if (idle > 0) {
 				int k;
 				for (k = 0; k < 6; k++) {
@@ -140,9 +183,12 @@ int clearMinion(vector<minion*>& infos) {
 						break;
 					}
 				}
+				if(cards[k][reborns[j]][8] == MECH){
+					guzhibuff(infos, temp);
+				}
 				infos[i] = new minion(reborns[j], cards[k][reborns[j]]);
 				infos[i]->lose_reborn();
-				infos[i]->gain_buff(0, 1 - infos[i]->read_attack(), 0, 0, 0);
+				infos[i]->gain_buff(0, 1 - infos[i]->read_health(), 0, 0, 0);
 				i++;
 				j++;
 			}
@@ -161,13 +207,13 @@ int clearMinion(vector<minion*>& infos) {
 		}
 		nextstate.pop();
 	}
-	if (guzhicount) {
-		for (i = 0; i < infos.size(); i++) {
-			if (infos[i]->read_name() == "偏折机器人") {
-				infos[i]->gain_buff(guzhicount, 0, 1, 0, 0);
-			}
-		}
-	}
+	// if (guzhicount) {
+	// 	for (i = 0; i < infos.size(); i++) {
+	// 		if (infos[i]->read_name() == "偏折机器人") {
+	// 			infos[i]->gain_buff(guzhicount, 0, 1, 0, 0);
+	// 		}
+	// 	}
+	// }
 
 	if (nana) {
 		for (i = 0; i < infos.size(); i++) {
@@ -191,6 +237,8 @@ int clearMinion(vector<minion*>& infos) {
 
 	return res;
 }
+
+
 
 //输出当前vector里存的随从
 void showMinion(vector<minion*>& infos) {
@@ -265,6 +313,8 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 	int index;//受到攻击随从的序号
 	int attackstate = 0;
 	int noattack = 0;
+	int myshield = 0;//我方失去圣盾数量
+	int yourshield = 0;//敌方失去圣盾数量
 	vector<minion*> hitter;
 	vector<minion*> hittee;
 	
@@ -314,21 +364,58 @@ int battle(vector<minion*>& here, vector<minion*>& there) {
 			hitter[attind]->gain_buff(hitter[attind]->read_attack(), 0, 0, 0, 0);
 		}
 
+		if (hitter[attind]->has_shield() && hittee[index]->read_attack() > 0) {//判断当前进行攻击随从是否会失去圣盾
+			myshield = 1;
+		}
+		if (hittee[index]->has_shield()) {
+			yourshield++;
+		}
+
 		hitter[attind]->hit(hittee[index]);
+		// cout<<hitter[attind] ->read_name()<<"攻击了"<<hittee[index]->read_name()<<endl;
 		//狂战斧特效判定
 		if (hitter[attind]->hit_nearby()) {
-			if (index > 0)
+			if (index > 0) {
+				if (hittee[index - 1]->has_shield()) {
+					yourshield++;
+				}
 				hittee[index - 1]->get_hit(hitter[attind]->read_attack());
-			if (index < hittee.size() - 1)
+			}
+			if (index < hittee.size() - 1) {
+				if (hittee[index + 1]->has_shield()) {
+					yourshield++;
+				}
 				hittee[index + 1]->get_hit(hitter[attind]->read_attack());
+			}
 		}
+
+		for (i = 0; i < hitter.size(); i++) {//我方随从获得失去圣盾增益
+			if (hitter[i]->read_name() == "浴火者伯瓦尔") {
+				hitter[i]->gain_buff(myshield * 2, 0, 0, 0, 0);
+			}
+			else if (hitter[i]->read_name() == "龙人执行者") {
+				hitter[i]->gain_buff(myshield * 2, myshield * 2, 0, 0, 0);
+			}
+		}
+
+		for (i = 0; i < hittee.size(); i++) {//敌方随从获得失去圣盾增益
+			if (hittee[i]->read_name() == "浴火者伯瓦尔") {
+				hittee[i]->gain_buff(yourshield * 2, 0, 0, 0, 0);
+			}
+			else if (hittee[i]->read_name() == "龙人执行者") {
+				hittee[i]->gain_buff(yourshield * 2, yourshield * 2, 0, 0, 0);
+			}
+		}
+
+		myshield = 0;//重置圣盾增益统计
+		yourshield = 0;
 
 		hitter[attind]->set_attacked();
 		clearMinion(here);
 		clearMinion(there);
-		//showMinion(here);
-		//showMinion(there);
-
+		// showMinion(here);
+		// showMinion(there);
+		
 		
 	}
 	//showMinion(here);
@@ -460,29 +547,26 @@ void read_minion(vector<minion*>& upminion, string info) {
 		string name;
 		int i = 0;//前三为基础信息，而后为额外buff
 		int j;//用来根据数据库生成随从
-		int attack, health;
-		int shield, taunt, reborn;
-		shield = 0;
-		taunt = 0;
-		reborn = 0;
+		vector<int> info(10, 0);
+		//圣盾2、 嘲讽3、 狂战4、 复生5、 亡语6、 剧毒7、 种族8、 特效9
 		while (words >> word) {
 			if (i == 0) {
 				name = word;
 			}
-			else if (i == 1) {
-				attack = stoi(word);
-			}
-			else if (i == 2) {
-				health = stoi(word);
+			else if (i < 3) {
+				info[i - 1] = stoi(word);
 			}
 			else if(word == "圣盾"){
-				shield = 1;
+				info[2] = 1;
 			}
 			else if (word == "嘲讽") {
-				taunt = 1;
+				info[3] = 1;
 			}
 			else if (word == "复生") {
-				reborn = 1;
+				info[5] = 1;
+			}
+			else if (word == "机械") {
+				info[6] = MECHSS + 3;
 			}
 			else {
 				cout << "检测到不明信息" << endl;
@@ -499,7 +583,7 @@ void read_minion(vector<minion*>& upminion, string info) {
 		}
 		else {
 			minion* miniona = new minion(name, cards[j][name]);
-			miniona->gain_buff(attack - miniona->read_attack(), health - miniona->read_health(), shield, taunt, reborn);//导入输入的身材和对应buff
+			miniona->reset_minion(info);//导入输入的身材和对应buff
 			upminion.push_back(miniona);//压入随从队列中
 		}
 	}
@@ -580,7 +664,6 @@ int main() {
 		for (int n = 0; n < there.size(); n++) {
 			there[n] = new minion(yourminion[n]);
 		}
-
 		if (i == 0) {//第一次循环时，输出双方场面
 			cout << "你的随从:" << endl;
 			for (auto p : here) {
@@ -591,7 +674,7 @@ int main() {
 				p->showcard();
 		}
 		else {
-			//break;
+			// break;
 		}
 		if (here.size() == there.size()) {//随从数量一样多，先后手都可能
 			state = rand() % 2;//1为here先手，0为后手

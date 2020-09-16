@@ -9,6 +9,8 @@
 #define LMECH	11
 #define ERZI	12
 #define EGG		13
+#define LDEMON	14
+#define MAITIAN	15
 #define REBORN	20
 #define BEAST	1
 #define DEMON	2
@@ -58,7 +60,7 @@ public:
 	}
 
 	//带数组构造函数
-	minion(std::string namein, std::vector<int> info) {
+	minion(std::string namein, std::vector<int>& info) {
 		name = namein;
 		attack = info[0];
 		health = info[1];
@@ -112,6 +114,16 @@ public:
 		}
 		else {
 
+		}
+	}
+
+	//入场时重设随从数值/亡语
+	void reset_minion(std::vector<int>& info){
+		int *orig[10] = {&attack, &health, &shield, &taunt, &nearby, &reborn, &deathrattle, &poisonous, &racial, &special};
+		for(int i = 0; i < 10; i++){
+			if(info[i] > 0){
+				*orig[i] = info[i];
+			}
 		}
 	}
 
