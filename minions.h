@@ -11,13 +11,21 @@
 #define EGG		13
 #define LDEMON	14
 #define MAITIAN	15
-#define REBORN	20
-#define BEAST	1
+#define WAIPO	16
+#define LANPANG	17
+#define VEGE	113
+#define MENGGU	18
+#define MURKING	19
+#define LANGDIE	20
+#define DIEBST	21
+#define DIEMECH	22
+#define REBORN	30
+#define PIRATE	1
 #define DEMON	2
 #define MECH	3
 #define	DRAGON	4
 #define MURLOC	5
-#define PIRATE	6
+#define BEAST	6
 #define ALL		7
 
 class minion {
@@ -27,6 +35,7 @@ public:
 		name = namein;
 		attack = attackin;
 		health = healthin;
+		orighealth = healthin;
 		alive = health > 0;
 		shield = 0;
 		taunt = 0;
@@ -41,6 +50,7 @@ public:
 		name = namein;
 		attack = attackin;
 		health = healthin;
+		orighealth = healthin;
 		racial = racialin;
 	}
 
@@ -49,6 +59,7 @@ public:
 		name = namein;
 		attack = attackin;
 		health = healthin;
+		orighealth = healthin;
 		alive = health > 0;
 		shield = shieldin;
 		taunt = tauntin;
@@ -64,6 +75,7 @@ public:
 		name = namein;
 		attack = info[0];
 		health = info[1];
+		orighealth = info[1];
 		shield = info[2];
 		taunt = info[3];
 		nearby = info[4];
@@ -78,6 +90,7 @@ public:
 		name = exist->read_name();
 		attack = exist->read_attack();
 		health = exist->read_health();
+		orighealth = exist->read_health();
 		shield = exist->has_shield();
 		taunt = exist->has_taunt();
 		nearby = exist->hit_nearby();
@@ -94,6 +107,9 @@ public:
 	//返回生命值
 	int read_health() { return health; }
 
+	//返回初始生命值
+	int read_orighealth() { return orighealth; }
+
 	//返回种族
 	int read_racial() { return racial; }
 
@@ -108,6 +124,7 @@ public:
 			lose_shield();
 			return;
 		}
+		just = 1;
 		health -= injure;
 		if (health < 1) {
 			this->alive = 0;
@@ -134,6 +151,7 @@ public:
 			return;
 		}
 		health -= injure;
+		just = 1;
 		//std::cout << name << "受到了来自" << enemy_name << "的" << injure << "点伤害,";
 		if (this->health < 1) {
 			//std::cout << name << "已经死亡" << std::endl;
@@ -203,10 +221,48 @@ public:
 	//有特效
 	int has_special() { return special; }
 
+	//获取种族相关buff
+	void racial_buff(int pirateNow, int demonNow) { //当当前场上的光环数与记录不同时，根据光环数量的差距进行运算
+		int pirateGap;
+		int demonGap;
+		pirateGap = pirateNow - pirateAura;
+		demonGap = demonNow - demonAura;
+		if (racial == PIRATE) {
+			attack += pirateGap;
+			if (pirateGap > 0) { //光环数量增加，血量增加
+				health += pirateGap;
+			}
+			else if (orighealth + pirateNow < health) { //当失去buff后，血量超过本来时，减少血量，否则不变
+				health = orighealth + pirateNow; //血量为基础血量加上剩余buff血量
+			}
+		}
+		else if (racial == DEMON) {
+			attack += demonGap * 2;
+			if (demonGap > 0) {
+				health += demonGap * 2;
+			}
+			else if (orighealth + demonNow * 2 < health) { //同上
+				health = orighealth + demonNow * 2;
+			}
+		}
+		else if (racial == ALL) {
+			attack += pirateGap + demonGap * 2;
+			if(pirateGap + demonGap * 2 > 0) {
+				health += pirateGap + demonGap * 2;
+			}
+			else if (orighealth + pirateNow + demonNow * 2 < health) {
+				health = orighealth + pirateNow + demonNow * 2;
+			}
+		}
+		pirateAura = pirateNow; //设定新的光环基础数值
+		demonAura = demonNow;
+	}
+
 	//获取buff，包括身材、圣盾、嘲讽、复生
 	void gain_buff(int gain_attack, int gain_health, int gain_shield, int gain_taunt, int gain_reborn) {
 		attack += gain_attack;
 		health += gain_health;
+		orighealth += gain_health;
 		if (!shield)
 			shield = gain_shield;
 		if (!taunt)
@@ -232,7 +288,7 @@ public:
 		else if (racial == PIRATE)
 			std::cout << "海盗 ";
 		else if (racial == ALL)
-			std::cout << "全部";
+			std::cout << "全部 ";
 		if (shield)
 			std::cout << "圣盾 ";
 		if (taunt)
@@ -246,6 +302,43 @@ public:
 		if (special)
 			std::cout << "特效 ";
 		std::cout << std::endl;
+	}
+
+	//判断是否刚刚受到攻击
+	int just_got_hit(){
+		return just;
+	}
+
+	//重设刚刚受到攻击
+	void reset_just(){
+		just = 0;
+	}
+
+	//初始化海盗种族光环数量
+	void initial_pirate_aura(int x){
+		pirateAura = x;
+		if (racial == PIRATE) { //融合怪会在这之后设定二王光环buff，因此此处只对海盗生效
+			set_orighealth();
+		}
+	}
+
+	//初始化二王光环数量
+	void initial_demon_aura(int x) {
+		demonAura = x;
+		set_orighealth();
+	}
+
+	//设定真实生命
+	void set_orighealth() {
+		if (racial == PIRATE) {
+			orighealth = health - pirateAura;
+		}
+		else if (racial == DEMON) {
+			orighealth = health - demonAura * 2;
+		}
+		else if (racial == ALL) {
+			orighealth = health - demonAura * 2 - pirateAura;
+		}
 	}
 
 	//析构函数
@@ -268,4 +361,8 @@ private:
 	int racial;//种族
 	int attacked = 0;
 	int special = 0;
+	int just = 0; // 刚刚受到攻击(鬼妈、安保、鬼父)
+	int orighealth;
+	int pirateAura = 0; //南海船长buff
+	int demonAura = 0; //二王buff
 };
