@@ -144,8 +144,82 @@ void gongchengbuff(vector<minion*>& myminion, int gain) {
 	}
 }
 
+//读取场上光环
+void readAura(vector<minion*>& infos, int& pirateAura, int& demonAura) { 
+	int i;
+	pirateAura = 0;
+	demonAura = 0;
+	for (i = 0; i < infos.size(); i++) { //读取场上已有光环数量
+		if (infos[i]->read_name() == "玛尔加尼斯") {
+			demonAura++;
+		}
+		else if (infos[i]->read_name() == "南海船长") {
+			pirateAura++;
+		}
+	}
+}
+
+//初始化场上随从的光环计数
+void setAura(vector<minion*>& infos, int& pirateAura, int& demonAura) { 
+	int i;
+	for (i = 0; i < infos.size(); i++) {
+		if (infos[i]->read_racial() == PIRATE) { //初始化南海船长数量
+			infos[i]->initial_pirate_aura(pirateAura);
+		}
+		else if (infos[i]->read_racial() == DEMON) { //初始化二王光环数量
+			infos[i]->initial_demon_aura(demonAura);
+		}
+		else if (infos[i]->read_racial() == ALL) { //融合怪单独处理
+			infos[i]->initial_demon_aura(demonAura);
+			infos[i]->initial_pirate_aura(pirateAura);
+		}
+	}
+}
+
+//刷新场上随从光环效果
+void refreshAura(vector<minion*>& infos, int& pirateAura, int& demonAura) {
+	int racial = 0;
+	for (int i = 0; i < infos.size(); i++) {
+		racial = infos[i]->read_racial();
+		if (racial <= DEMON || racial == ALL) {
+			infos[i]->racial_buff(pirateAura, demonAura);
+		}
+	}
+}
+
+//受到来自敌对随从的非正常攻击(爆爆、喷子)
+void untouchHit(vector<minion*>& enemys, int injury) {
+	int i, x;
+	int j;
+	vector<minion*> availMinion(0);
+	for (i = 0; i < enemys.size(); i++) { //将所有仍有血量的随从加入数组中
+		if (enemys[i]->read_health() > 0) {
+			availMinion.push_back(enemys[i]);
+		}
+	}
+	x = availMinion.size();
+	if (!x) { //所有随从都已死亡，无法再受到伤害
+		return ;
+	}
+	else {
+		i = rand() % x; //随机选取一名可受伤随从
+		if (availMinion[i]->has_shield()) { //受到伤害随从具有圣盾，与圣盾相关随从获得buff
+			for (j = 0; j < enemys.size(); j++) {
+				if (enemys[j]->read_name() == "龙人执行者") {
+					enemys[j]->gain_buff(2, 2, 0, 0, 0);
+				}
+				else if (enemys[j]->read_name() == "浴火者伯瓦尔") {
+					enemys[j]->gain_buff(2, 0, 0, 0, 0);
+				}
+			}
+		}
+		availMinion[i]->get_hit(injury);
+
+	}
+}
+
 //删除已经死去的随从
-int clearMinion(vector<minion*>& infos) {
+int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 	int res = 0;
 	int i;
 	int j = 0;//用来算reborn
@@ -161,16 +235,31 @@ int clearMinion(vector<minion*>& infos) {
 	vector<int> pucongatt(0);
 	int deathtime = 1;//瑞文的效果
 	int d;
+	int jh = 0; //刚刚受到伤害次数
 	int buffindex;//亡语buff的i变量
 	string demonName; //鬼妈召唤恶魔的名字
+	int pirateAura = 0; //用于鬼妈碰撞刚好死亡时被二王救活
+	int demonAura = 0;
+	int beastAttack = 0; //召唤野兽获得的攻击buff
+	int beastHealth = 0; //召唤野兽获得的生命buff
+	int newbeast = 0; //判断是否为新召唤野兽
+	int penziCount = 0; //喷子的数量
+	int die = 0; //记录是否有随从死亡，判断是否循环
 
 	for (i = 0; i < infos.size(); i++) {
-		if (infos[i]->read_name() == "瑞文戴尔男爵" && infos[i]->is_alive())
-			deathtime = 2;
+		if (infos[i]->read_health() > 0) {
+			if (infos[i]->read_name() == "瑞文戴尔男爵") {
+				deathtime = 2;
+			}
+			else if (infos[i]->read_name() == "灵魂杂耍者") {
+				penziCount++;
+			}
+		}
 	}
 
+
 	for (i = 0; i < infos.size() && infos.size() < 7; i++) { //满场时不考虑受伤触发
-		if(infos[i]->just_got_hit()) {
+		for (jh = 0; jh < infos[i]->just_got_hit(); jh++) {
 			if (infos[i]->read_name() == "小鬼妈妈") {
 				infos.resize(infos.size() + 1); // 增加一格
 				for (j = infos.size() - 1; j > i + 1; j--){
@@ -179,6 +268,8 @@ int clearMinion(vector<minion*>& infos) {
 				d = rand() % GuimamaName.size(); //鬼妈随机召唤一个恶魔，其中不包括自己
 				demonName = GuimamaName[d];
 				infos[i + 1] = new minion(demonName, GuimamaDemon[demonName]);
+				readAura(infos, pirateAura, demonAura); //如果出现二王，需要对血量进行重新判定
+				refreshAura(infos, pirateAura, demonAura);
 			}
 			else if(infos[i]->read_name() == "小鬼首领") { //鬼父受伤召唤小鬼
 				infos.resize(infos.size() + 1); // 增加一格
@@ -186,6 +277,8 @@ int clearMinion(vector<minion*>& infos) {
 					infos[j] = infos[j - 1];
 				}
 				infos[i + 1] = new minion("小鬼", 1, 1, DEMON);
+				readAura(infos, pirateAura, demonAura); //如果出现二王，需要对血量进行重新判定
+				refreshAura(infos, pirateAura, demonAura);
 			}
 			else if(infos[i]->read_name() == "安保巡游者") {
 				infos.resize(infos.size() + 1); // 增加一格
@@ -200,7 +293,20 @@ int clearMinion(vector<minion*>& infos) {
 	}
 
 	for (i = 0; i < infos.size(); i++) {
-		if (!infos[i]->is_alive()) {//发现列表中有死去的随从
+		if (infos[i]->read_health() > 0) {
+			if (infos[i]->read_name() == "族群领袖") { //小马加2攻
+				beastAttack += 2;
+			}
+			else if (infos[i]->read_name() == "熊妈妈") { //妈妈+4+4
+				beastAttack += 4;
+				beastHealth += 4;
+			}
+		}
+	}
+
+	for (i = 0; i < infos.size(); i++) {
+		if (!(infos[i]->read_health() > 0)) {//发现列表中有死去的随从
+			die = 1;
 			if (infos[i]->has_death()) {//随从具有亡语
 				if (infos[i]->read_name() == "瘟疫鼠群") {
 					for (j = 0; j < infos[i]->read_attack(); j++) {
@@ -261,6 +367,9 @@ int clearMinion(vector<minion*>& infos) {
 				else if (infos[i]->read_name() == "红衣纳迪娜") {
 					nana = 1;
 				}
+				else if (infos[i]->read_name() == "爆爆机器人") {
+					for (d = 0; d < deathtime; d++) nextstate.push(BOMB);
+				}
 				else if (infos[i]->read_name() == "无私的英雄") {
 					xiaohuangshield += deathtime;
 				}
@@ -284,9 +393,13 @@ int clearMinion(vector<minion*>& infos) {
 			else if (infos[i]->read_racial() == MECH) { //死亡随从是机械
 				nextstate.push(DIEMECH);
 			}
+			else if (infos[i]->read_racial() == DEMON) { //死亡随从是恶魔
+				for (d = 0; d < penziCount; d++) nextstate.push(PENZI);
+			}
 			else if (infos[i]->read_racial() == ALL) { //死亡随从是融合怪类型
 				nextstate.push(DIEBST);
 				nextstate.push(DIEMECH);
+				for (d = 0; d < penziCount; d++) nextstate.push(PENZI);
 			}
 			delete (infos[i]);
 		}
@@ -307,6 +420,7 @@ int clearMinion(vector<minion*>& infos) {
 		infos.resize(total);
 	while (!nextstate.empty()) {
 		state = nextstate.front();
+		newbeast = 0;
 		if (state < 7) {//原有随从并未死亡， 从temp处放回
 			infos[i++] = temp[state];
 			temp[state] = NULL;
@@ -314,24 +428,28 @@ int clearMinion(vector<minion*>& infos) {
 		else if (state == MOUSE) {
 			if (idle > 0) {
 				infos[i++] = new minion("小老鼠", 1, 1, BEAST);
+				newbeast = 1;
 				idle--;
 			}
 		}
 		else if (state == SPIDER) {
 			if (idle > 0) {
 				infos[i++] = new minion("小蜘蛛", 1, 1, BEAST);
+				newbeast = 1;
 				idle--;
 			}
 		}
 		else if (state == LION) {
 			if (idle > 0) {
 				infos[i++] = new minion("小狮子", 2, 2, BEAST);
+				newbeast = 1;
 				idle--;
 			}
 		}
 		else if (state == WAIPO) {
 			if (idle > 0) {
 				infos[i++] = new minion("狼外婆", 3, 2, BEAST);
+				newbeast = 1;
 				idle--;
 			}
 		}
@@ -396,6 +514,9 @@ int clearMinion(vector<minion*>& infos) {
 				infos[i] = new minion(reborns[j], cards[k][reborns[j]]);
 				infos[i]->lose_reborn();
 				infos[i]->gain_buff(0, 1 - infos[i]->read_health(), 0, 0, 0);
+				if (infos[i]->read_racial() == BEAST || infos[i]->read_racial() == ALL) { //复生了野兽
+					infos[i]->gain_buff(beastAttack, beastHealth, 0, 0, 0);
+				}
 				i++;
 				j++;
 			}
@@ -452,6 +573,17 @@ int clearMinion(vector<minion*>& infos) {
 		else if (state == DIEMECH) { //机械死亡，对回收机器人buff
 			lajibuff(infos, temp);
 		}
+		else if (state == BOMB) {
+			untouchHit(enemys, 4);
+		}
+		else if (state == PENZI) {
+			untouchHit(enemys, 3);
+		}
+		
+		if (newbeast) {
+			infos[i - 1]->gain_buff(beastAttack, beastHealth, 0, 0, 0);
+		}
+
 		nextstate.pop();
 	}
 	
@@ -487,7 +619,7 @@ int clearMinion(vector<minion*>& infos) {
 		infos[i]->reset_just();
 	}
 
-	return res;
+	return die;
 }
 
 
@@ -537,47 +669,7 @@ int attackindex(vector<minion*>& knownminion) {
 	return 0;
 }
 
-//读取场上光环
-void readAura(vector<minion*>& infos, int& pirateAura, int& demonAura) { 
-	int i;
-	pirateAura = 0;
-	demonAura = 0;
-	for (i = 0; i < infos.size(); i++) { //读取场上已有光环数量
-		if (infos[i]->read_name() == "玛尔加尼斯") {
-			demonAura++;
-		}
-		else if (infos[i]->read_name() == "南海船长") {
-			pirateAura++;
-		}
-	}
-}
 
-//初始化场上随从的光环计数
-void setAura(vector<minion*>& infos, int& pirateAura, int& demonAura) { 
-	int i;
-	for (i = 0; i < infos.size(); i++) {
-		if (infos[i]->read_racial() == PIRATE) { //初始化南海船长数量
-			infos[i]->initial_pirate_aura(pirateAura);
-		}
-		else if (infos[i]->read_racial() == DEMON) { //初始化二王光环数量
-			infos[i]->initial_demon_aura(demonAura);
-		}
-		else if (infos[i]->read_racial() == ALL) { //融合怪单独处理
-			infos[i]->initial_demon_aura(demonAura);
-			infos[i]->initial_pirate_aura(pirateAura);
-		}
-	}
-}
-
-void refreshAura(vector<minion*>& infos, int& pirateAura, int& demonAura) {
-	int racial = 0;
-	for (int i = 0; i < infos.size(); i++) {
-		racial = infos[i]->read_racial();
-		if (racial <= DEMON || racial == ALL) {
-			infos[i]->racial_buff(pirateAura, demonAura);
-		}
-	}
-}
 
 int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 	int i;
@@ -701,7 +793,13 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 
 		hitter[attind]->hit(hittee[index]); //攻击正戏
 		if (detail) {
-			cout << endl << hitter[attind]->read_name() << "攻击了" << hittee[index]->read_name() << endl;
+			if (attackstate % 2) {
+				cout << endl << "先手方进行攻击" << endl;
+			}
+			else {
+				cout << endl << "后手方进行攻击" << endl;
+			}
+			cout << hitter[attind]->read_name() << "攻击了" << hittee[index]->read_name() << endl;
 		}
 
 		//狂战斧特效判定
@@ -749,8 +847,9 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 		gongchengbuff(here, -1);//重置恶魔攻击力，理由同领军
 		gongchengbuff(there, -1);
 
-		clearMinion(here);
-		clearMinion(there);
+		while (clearMinion(here, there) || clearMinion(there, here)){
+			;
+		}
 
 		laoxiayanbuff(here, there, 1); //碰撞前，对老瞎眼进行buff
 		lingjunbuff(here, 1);
@@ -854,12 +953,12 @@ unordered_map<string, vector<int>> card_info(int no) {//读入已存在的卡牌信息
 			info[6] = MECHSS + 3;
 		card[name] = info;
 
-		if (info[8] == DEMON && name != "小鬼妈妈") { //对于恶魔，加入鬼妈妈的随从库中
+		if ((info[8] == DEMON && name != "小鬼妈妈") || info[8] == ALL) { //对于恶魔和融合怪，加入鬼妈妈的随从库中
 			info[3] = 1;
 			GuimamaDemon[name] = info;
 			GuimamaName.push_back(name);
 		}
-		else if (info[8] == PIRATE) { //对于海盗，加入海盗船的蒙古海军中
+		if (info[8] == PIRATE || info[8] == ALL) { //对于海盗，加入海盗船的蒙古海军中
 			BoatPirate[name] = info;
 			BoatName.push_back(name);
 		}

@@ -19,6 +19,8 @@
 #define LANGDIE	20
 #define DIEBST	21
 #define DIEMECH	22
+#define BOMB	23
+#define PENZI	24
 #define REBORN	30
 #define PIRATE	1
 #define DEMON	2
@@ -36,7 +38,6 @@ public:
 		attack = attackin;
 		health = healthin;
 		orighealth = healthin;
-		alive = health > 0;
 		shield = 0;
 		taunt = 0;
 		nearby = 0;
@@ -60,7 +61,6 @@ public:
 		attack = attackin;
 		health = healthin;
 		orighealth = healthin;
-		alive = health > 0;
 		shield = shieldin;
 		taunt = tauntin;
 		nearby = nearbyin;
@@ -86,6 +86,7 @@ public:
 		special = info[9];
 	}
 
+	// 复制已存在随从快速构造
 	minion(minion* exist) {
 		name = exist->read_name();
 		attack = exist->read_attack();
@@ -124,14 +125,8 @@ public:
 			lose_shield();
 			return;
 		}
-		just = 1;
+		just++;
 		health -= injure;
-		if (health < 1) {
-			this->alive = 0;
-		}
-		else {
-
-		}
 	}
 
 	//入场时重设随从数值/亡语
@@ -155,7 +150,6 @@ public:
 		//std::cout << name << "受到了来自" << enemy_name << "的" << injure << "点伤害,";
 		if (this->health < 1) {
 			//std::cout << name << "已经死亡" << std::endl;
-			this->alive = 0;
 		}
 		else {
 			//std::cout << "当前身材:" << attack << '/' << health << std::endl;
@@ -165,11 +159,9 @@ public:
 	//返回名字
 	std::string read_name() { return name; }
 
-	//判断存活
-	int is_alive() { return alive; }
 
 	//双方对撞
-	int hit(minion* enemy) {
+	void hit(minion* enemy) {
 		int enemy_attack = enemy->read_attack();
 		std::string enemy_name = enemy->read_name();
 		//std::cout << name << "对" << enemy_name << "发起了攻击" << std::endl;
@@ -182,7 +174,6 @@ public:
 		}
 		else
 			enemy->get_hit(attack, name);
-		return this->is_alive() && enemy->is_alive();
 	}
 
 	//判断圣盾
@@ -216,7 +207,7 @@ public:
 	int is_poisonous() { return poisonous; }
 
 	//剧毒秒杀
-	void get_poisonous() { alive = 0; health = 0; }
+	void get_poisonous() { health = -2000; }
 
 	//有特效
 	int has_special() { return special; }
@@ -225,7 +216,13 @@ public:
 	void racial_buff(int pirateNow, int demonNow) { //当当前场上的光环数与记录不同时，根据光环数量的差距进行运算
 		int pirateGap;
 		int demonGap;
-		pirateGap = pirateNow - pirateAura;
+		if (name == "玛尔加尼斯") {
+			demonNow--;
+		}
+		else if (name == "南海船长") {
+			pirateNow--;
+		}
+		pirateGap = pirateNow - pirateAura; //当前光环数量与原本光环数量的差距，不同，则对属性进行调整
 		demonGap = demonNow - demonAura;
 		if (racial == PIRATE) {
 			attack += pirateGap;
@@ -316,6 +313,9 @@ public:
 
 	//初始化海盗种族光环数量
 	void initial_pirate_aura(int x){
+		if (name == "南海船长") {
+			x--;
+		}
 		pirateAura = x;
 		if (racial == PIRATE) { //融合怪会在这之后设定二王光环buff，因此此处只对海盗生效
 			set_orighealth();
@@ -324,6 +324,9 @@ public:
 
 	//初始化二王光环数量
 	void initial_demon_aura(int x) {
+		if (name == "玛尔加尼斯") {
+			x--;
+		}
 		demonAura = x;
 		set_orighealth();
 	}
@@ -351,7 +354,6 @@ private:
 	std::string name;//名字
 	int health;//生命值
 	int attack;//攻击力
-	int alive = 1;//存活为1，死亡为0
 	int shield = 0;//圣盾
 	int taunt = 0;//嘲讽
 	int nearby = 0;//狂战斧
