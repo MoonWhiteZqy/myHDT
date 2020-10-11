@@ -15,7 +15,19 @@ unordered_map<string, vector<int>> GuimamaDemon; //鬼妈妈的生成恶魔
 vector<string> GuimamaName; //鬼妈妈生成恶魔的名字
 unordered_map<string, vector<int>> BoatPirate; //海盗船的生成海盗
 vector<string> BoatName; //蒙古海军的名字
+int enemyNeigui = 0; //为敌方生成内鬼的数量
 
+
+
+
+//输出当前vector里存的随从
+void showMinion(vector<minion*>& infos) {
+	for (int i = 0; i < infos.size(); i++){
+		infos[i]->showcard();
+	}
+	cout << "展示完毕" << endl;
+	cout << "-------------------------" << endl;
+}
 
 //实现钴制卫士特效
 void guzhibuff(vector<minion*>& infos, vector<minion*>& temp){
@@ -218,48 +230,20 @@ void untouchHit(vector<minion*>& enemys, int injury) {
 	}
 }
 
-//删除已经死去的随从
-int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
-	int res = 0;
-	int i;
-	int j = 0;//用来算reborn
-	int idle;//确认亡语、复生的随从数量
-	int state;
-	int nana = 0;
-	int total = 0;//亡语等触发后随从的总数，最大为7
-	int xiaohuangshield = 0;//小黄的圣盾
-	queue<int> nextstate;
-	vector<minion*> temp(7);
-	vector<string> reborns;
-	vector<int> toshield;//获得小黄的圣盾的随从编号
-	vector<int> pucongatt(0);
-	int deathtime = 1;//瑞文的效果
-	int d;
-	int jh = 0; //刚刚受到伤害次数
-	int buffindex;//亡语buff的i变量
-	string demonName; //鬼妈召唤恶魔的名字
-	int pirateAura = 0; //用于鬼妈碰撞刚好死亡时被二王救活
+// 随从刚刚受到攻击生成新随从
+void just_hit_minion(vector<minion*>& infos) {
+	int i, j;
+	int pirateAura = 0;
 	int demonAura = 0;
-	int beastAttack = 0; //召唤野兽获得的攻击buff
-	int beastHealth = 0; //召唤野兽获得的生命buff
-	int newbeast = 0; //判断是否为新召唤野兽
-	int penziCount = 0; //喷子的数量
-	int die = 0; //记录是否有随从死亡，判断是否循环
-
-	for (i = 0; i < infos.size(); i++) {
-		if (infos[i]->read_health() > 0) {
-			if (infos[i]->read_name() == "瑞文戴尔男爵") {
-				deathtime = 2;
-			}
-			else if (infos[i]->read_name() == "灵魂杂耍者") {
-				penziCount++;
-			}
-		}
-	}
-
-
+	int jh;
+	string demonName;
+	vector<minion*> temp;
+	int d;
 	for (i = 0; i < infos.size() && infos.size() < 7; i++) { //满场时不考虑受伤触发
 		for (jh = 0; jh < infos[i]->just_got_hit(); jh++) {
+			if (infos.size() >= 7) { //防止不受原本的上限影响
+				break;
+			}
 			if (infos[i]->read_name() == "小鬼妈妈") {
 				infos.resize(infos.size() + 1); // 增加一格
 				for (j = infos.size() - 1; j > i + 1; j--){
@@ -291,6 +275,60 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 			}
 		}
 	}
+
+	for (i = 0; i < infos.size(); i++) { //重置受到攻击
+		infos[i]->reset_just();
+	}
+}
+
+
+//删除已经死去的随从
+int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
+	int res = 0;
+	int i;
+	int j = 0;//用来算reborn
+	int idle;//确认亡语、复生的随从数量
+	int state;
+	int nana = 0;
+	int total = 0;//亡语等触发后随从的总数，最大为7
+	int xiaohuangshield = 0;//小黄的圣盾
+	queue<int> nextstate;
+	vector<minion*> temp(7);
+	vector<string> reborns;
+	vector<minion*> neiguiSet(0);
+	vector<int> toshield;//获得小黄的圣盾的随从编号
+	vector<int> pucongatt(0);
+	int deathtime = 1;//瑞文的效果
+	int d;
+	int jh = 0; //刚刚受到伤害次数
+	int buffindex;//亡语buff的i变量
+	string demonName; //鬼妈召唤恶魔的名字
+	int pirateAura = 0; //用于鬼妈碰撞刚好死亡时被二王救活
+	int demonAura = 0;
+	int beastAttack = 0; //召唤野兽获得的攻击buff
+	int beastHealth = 0; //召唤野兽获得的生命buff
+	int newbeast = 0; //判断是否为新召唤野兽
+	int penziCount = 0; //喷子的数量
+	int die = 0; //记录是否有随从死亡，判断是否循环
+	int neiguiCount = 0; //内鬼的数量
+
+	neiguiCount = enemyNeigui; //先记录内鬼的数量
+	enemyNeigui = 0;
+
+	for (i = 0; i < infos.size(); i++) {
+		if (infos[i]->read_health() > 0) {
+			if (infos[i]->read_name() == "瑞文戴尔男爵") {
+				deathtime = 2;
+			}
+			else if (infos[i]->read_name() == "灵魂杂耍者") {
+				penziCount++;
+			}
+		}
+	}
+
+
+	just_hit_minion(infos);
+
 
 	for (i = 0; i < infos.size(); i++) {
 		if (infos[i]->read_health() > 0) {
@@ -364,6 +402,9 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 					for (d = 0; d < deathtime * 3; d++) nextstate.push(MENGGU);
 					total += deathtime * 3;
 				}
+				else if (infos[i]->read_name() == "比斯巨兽") {
+					enemyNeigui += deathtime; //给敌方随从塞内鬼
+				}
 				else if (infos[i]->read_name() == "红衣纳迪娜") {
 					nana = 1;
 				}
@@ -410,7 +451,13 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 			total++;
 		}
 	}
-	idle = 7 - res;
+
+
+	idle = 7 - res - neiguiCount;
+	neiguiSet.resize(neiguiCount);
+	for (i = 0; i < neiguiCount; i++) {
+		neiguiSet[i] = new minion("内鬼", 3, 3);
+	}
 	i = 0;
 	j = 0;
 	infos.clear();
@@ -508,7 +555,7 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 						break;
 					}
 				}
-				if(cards[k][reborns[j]][8] == MECH){
+				if(cards[k][reborns[j]][8] == MECH || cards[k][reborns[j]][8] == ALL){
 					guzhibuff(infos, temp);
 				}
 				infos[i] = new minion(reborns[j], cards[k][reborns[j]]);
@@ -532,6 +579,9 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 				else
 					temp[buffindex]->gain_buff(1, 1, 0, 0, 0);
 			}
+			for (buffindex = 0; buffindex < neiguiCount; buffindex++) { //对内鬼们进行buff
+				neiguiSet[buffindex]->gain_buff(1, 1, 0, 0, 0);
+			}
 		}
 		else if (state == MURKING) { //国王亡语buff鱼人
 			for (buffindex = 0; buffindex < i; buffindex++) {
@@ -553,7 +603,7 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 		else if (state == LANGDIE) { //狼爹亡语buff野兽， 同上
 			for (buffindex = 0; buffindex < i; buffindex++) {
 				if (infos[buffindex]->read_racial() == BEAST || infos[buffindex]->read_racial() == ALL) {
-					infos[buffindex]->gain_buff(4, 4, 0, 0, 0);
+					infos[buffindex]->gain_buff(5, 5, 0, 0, 0);
 				}
 			}
 			for (buffindex = 0; buffindex < 7; buffindex++) {
@@ -562,7 +612,7 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 				}
 				else {
 					if(temp[buffindex]->read_racial() == BEAST || temp[buffindex]->read_racial() == ALL) {
-						temp[buffindex]->gain_buff(4, 4, 0, 0, 0);
+						temp[buffindex]->gain_buff(5, 5, 0, 0, 0);
 					}
 				}
 			}
@@ -586,11 +636,24 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 
 		nextstate.pop();
 	}
+
+	if (infos.size() < 7 && neiguiCount) { //把内鬼加入随从里
+		j = infos.size(); //读取先前随从数量
+		if (j + neiguiCount > 7) { //加上内鬼后随从达到上限
+			infos.resize(7);
+		}
+		else {
+			infos.resize(j + neiguiCount); //加入内鬼未达到上限
+		}
+		for (i = 0; i < neiguiCount; i++) {
+			infos[j + i] = neiguiSet[i];
+		}
+	}
 	
 
 	if (nana) {
 		for (i = 0; i < infos.size(); i++) {
-			if (infos[i]->read_racial() == DRAGON) {
+			if (infos[i]->read_racial() == DRAGON || infos[i]->read_racial() == ALL) {
 				infos[i]->gain_buff(0, 0, 1, 0, 0);
 			}
 		}
@@ -615,23 +678,11 @@ int clearMinion(vector<minion*>& infos, vector<minion*>& enemys) {
 		}
 	}
 
-	for (i = 0; i < infos.size(); i++){ //重设刚刚受到攻击
-		infos[i]->reset_just();
-	}
 
-	return die;
+	return die || enemyNeigui;
 }
 
 
-
-//输出当前vector里存的随从
-void showMinion(vector<minion*>& infos) {
-	for (auto p : infos){
-		p->showcard();
-	}
-	cout << "展示完毕" << endl;
-	cout << "-------------------------" << endl;
-}
 
 
 //返回即将进行攻击的随从序号
@@ -669,6 +720,37 @@ int attackindex(vector<minion*>& knownminion) {
 	return 0;
 }
 
+// 超杀龙超杀效果
+void fire_overkill(minion* suffer, vector<minion*>& hittee, int& yourshield, int damage) {
+	int i;
+	minion* nowsuffer;
+	just_hit_minion(hittee);
+	if (suffer->read_health() < 0) { //达到超杀的条件
+		for (i = 0; i < hittee.size(); i++) {
+			if (hittee[i] == suffer) { //不再对当前受攻击随从造成影响
+				continue;
+			}
+			else {
+				if (hittee[i]->has_shield()) { //超杀效果到达圣盾随从
+					yourshield++;
+					hittee[i]->lose_shield();
+					return ;
+				}
+				else {
+					nowsuffer = hittee[i];
+					if (nowsuffer->read_health() < 0) { //防止反复鞭尸
+						continue;
+					}
+					nowsuffer->get_hit(damage); //记录当前受到超杀效果影响的随从
+					just_hit_minion(hittee);
+					if (nowsuffer->read_health() >= 0) { //超杀结束
+						return ;
+					}
+				}
+			}
+		}
+	}
+}
 
 
 int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
@@ -684,8 +766,13 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 	int captain = 0;//船长数量
 	int pirateAura = 0;//恶魔光环数量
 	int demonAura = 0;//海盗光环数量
+	int out = 0; //是否结束收尸
+	int windcount = 0; //风怒的次数判断
 	vector<minion*> hitter;
 	vector<minion*> hittee;
+	vector<minion*> leastEnemy(0); //猎马人的攻击目标
+	minion* suffer; //受到攻击的随从
+	int minattack; //最小攻击力
 
 	// laoxiayanbuff(here, there, -1); //开打前，先重置老瞎眼的攻击力为基础值，即不受其他鱼人影响
 	// lingjunbuff(here, -1); //开打前，重置双方鱼人领军buff所给攻击力
@@ -789,9 +876,50 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 
 		
 
-		
+		if (hitter[attind]->read_name() == "猎马人") {
+			leastEnemy.clear();
+			// 找到敌方随从中最小的攻击力
+			minattack = hittee[0]->read_attack();
+			for (i = 1; i < hittee.size(); i++) {
+				if (hittee[i]->read_attack() < minattack) {
+					minattack = hittee[i]->read_attack();
+				}
+			}
 
+			// 把攻击力最小的随从放入集合中
+			for (i = 0; i < hittee.size(); i++) {
+				if (hittee[i]->read_attack() == minattack) {
+					leastEnemy.push_back(hittee[i]);
+				}
+			}
+			i = rand() % leastEnemy.size();
+			for (index = 0; index < hittee.size(); index++) { //找到攻击最小随从的编号
+				if (hittee[index] == leastEnemy[i]) {
+					break;
+				}
+			}
+		}
+		
 		hitter[attind]->hit(hittee[index]); //攻击正戏
+		suffer = hittee[index];
+
+		if (hitter[attind]->read_name() == "火焰传令官") {
+			fire_overkill(suffer, hittee, yourshield, 3);
+		}
+		else if (hitter[attind]->read_name() == "破浪巨人") {
+			just_hit_minion(hittee);
+			if (suffer->read_health() < 0) {
+				for (i = 0; i < hitter.size(); i++) {
+					if (i == attind) { //不能buff自己
+						continue;
+					}
+					else if (hitter[i]->read_racial() == PIRATE || hitter[i]->read_racial() == ALL) { //对所有其他海盗buff
+						hitter[i]->gain_buff(2, 2, 0, 0, 0);
+					}
+				}
+			}
+		}
+
 		if (detail) {
 			if (attackstate % 2) {
 				cout << endl << "先手方进行攻击" << endl;
@@ -799,8 +927,9 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 			else {
 				cout << endl << "后手方进行攻击" << endl;
 			}
-			cout << hitter[attind]->read_name() << "攻击了" << hittee[index]->read_name() << endl;
+			cout << hitter[attind]->read_name() << "攻击了" << suffer->read_name() << endl;
 		}
+
 
 		//狂战斧特效判定
 		if (hitter[attind]->hit_nearby()) {
@@ -839,16 +968,44 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 		myshield = 0;//重置圣盾增益统计
 		yourshield = 0;
 
-		hitter[attind]->set_attacked();
+		if (!hitter[attind]->has_windfury()) {
+			hitter[attind]->set_attacked();
+		}
+		else {
+			if (windcount == 0) { //再给风怒方一次攻击机会
+				attackstate--;
+				windcount = 1;
+			}
+			else { // 风怒次数用尽
+				windcount = 0;
+				hitter[attind]->set_attacked();
+			}
+		}
 
+
+		if (attackstate % 2) {
+			there = hittee;
+			here = hitter;
+		}
+		else {
+			here = hittee;
+			there = hitter;
+		}
+		
 		laoxiayanbuff(here, there, -1); //在清除死亡随从前，先重置老瞎眼攻击力，防止出现结算错误
 		lingjunbuff(here, -1);
 		lingjunbuff(there, -1); //重置鱼人攻击力，理由同老瞎眼
 		gongchengbuff(here, -1);//重置恶魔攻击力，理由同领军
 		gongchengbuff(there, -1);
 
-		while (clearMinion(here, there) || clearMinion(there, here)){
-			;
+		
+		while (1){
+			out = 0;
+			out += clearMinion(here, there);
+			out += clearMinion(there, here);
+			if (!out) { //当且仅当双方都无随从死亡时结束
+				break;
+			}
 		}
 
 		laoxiayanbuff(here, there, 1); //碰撞前，对老瞎眼进行buff
@@ -868,6 +1025,7 @@ int battle(vector<minion*>& here, vector<minion*>& there, int detail) {
 			showMinion(here);
 			showMinion(there);
 			cout << endl ;
+			system("pause");
 		}
 		
 	}
@@ -1010,6 +1168,7 @@ void read_minion(vector<minion*>& upminion, string info) {
 		string name;
 		int i = 0;//前三为基础信息，而后为额外buff
 		int j;//用来根据数据库生成随从
+		int windfury = 0; //风怒
 		vector<int> info(10, 0);
 		//圣盾2、 嘲讽3、 狂战4、 复生5、 亡语6、 剧毒7、 种族8、 特效9
 		while (words >> word) {
@@ -1027,6 +1186,12 @@ void read_minion(vector<minion*>& upminion, string info) {
 			}
 			else if (word == "复生") {
 				info[5] = 1;
+			}
+			else if (word == "剧毒") {
+				info[7] = 1;
+			}
+			else if (word == "风怒") {
+				windfury = 1;
 			}
 			else if (word == "机械") {
 				if(info[6] == 0) {
@@ -1060,6 +1225,8 @@ void read_minion(vector<minion*>& upminion, string info) {
 		else {
 			minion* miniona = new minion(name, cards[j][name]);
 			miniona->reset_minion(info);//导入输入的身材和对应buff
+			if (windfury) { miniona->set_windfury(); }
+			if (name == "猎马人" || name == "破浪巨人") { miniona->set_windfury(); }
 			upminion.push_back(miniona);//压入随从队列中
 		}
 	}

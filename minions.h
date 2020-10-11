@@ -100,6 +100,7 @@ public:
 		poisonous = exist->is_poisonous();
 		racial = exist->read_racial();
 		special = exist->has_special();
+		windfury = exist->has_windfury();
 	}
 
 	//返回攻击力
@@ -146,7 +147,7 @@ public:
 			return;
 		}
 		health -= injure;
-		just = 1;
+		just++;
 		//std::cout << name << "受到了来自" << enemy_name << "的" << injure << "点伤害,";
 		if (this->health < 1) {
 			//std::cout << name << "已经死亡" << std::endl;
@@ -207,7 +208,14 @@ public:
 	int is_poisonous() { return poisonous; }
 
 	//剧毒秒杀
-	void get_poisonous() { health = -2000; }
+	void get_poisonous() {
+		if (shield) {
+			lose_shield();
+		}
+		else {
+			health = -2000;
+		}
+	}
 
 	//有特效
 	int has_special() { return special; }
@@ -296,6 +304,10 @@ public:
 			std::cout << "复生 ";
 		if (deathrattle)
 			std::cout << "亡语 ";
+		if (poisonous)
+			std::cout << "剧毒 ";
+		if (windfury)
+			std::cout << "风怒 ";
 		if (special)
 			std::cout << "特效 ";
 		std::cout << std::endl;
@@ -344,6 +356,12 @@ public:
 		}
 	}
 
+	// 赋予风怒
+	void set_windfury() { windfury = 1;	}
+
+	// 判断是否具有风怒
+	int has_windfury() { return windfury; }
+
 	//析构函数
 	virtual ~minion() {
 		//std::cout << name << "被移除" << std::endl;
@@ -367,4 +385,5 @@ private:
 	int orighealth;
 	int pirateAura = 0; //南海船长buff
 	int demonAura = 0; //二王buff
+	int windfury = 0; //风怒
 };
